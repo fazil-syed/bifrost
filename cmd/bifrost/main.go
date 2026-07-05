@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	log.Printf("Bifrost initiating")
+	log.Printf("App initiating")
 
 	configPath := flag.String("config", "config.yaml", "set the config yaml file path")
 

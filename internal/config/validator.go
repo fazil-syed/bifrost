@@ -1,13 +1,15 @@
 package config
 
-func Validate(cfg *Config) error {
+func addDefaultIfNotExist[T comparable](field *T, defaultValue T) {
+	var zeroVal T
+	if field == &zeroVal {
+		field = &defaultValue
+	}
+}
 
-	if cfg.Logging.Level == "" {
-		cfg.Logging.Level = "info"
-	}
-	if cfg.Bifrost.Name == "" {
-		cfg.Bifrost.Name = "bifrost"
-	}
+func Validate(cfg *Config) error {
+	addDefaultIfNotExist(&cfg.Logging.Level, "info")
+	addDefaultIfNotExist(&cfg.Bifrost.Name, "Bifrost")
 
 	return nil
 }
