@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:18-alpine3.23
+    container_name: bifrost-postgres
+    restart: unless-stopped
+
+    environment:
+      - POSTGRES_USER=bifrost
+      - POSTGRES_PASSWORD=bifrost
+      - POSTGRES_DB=bifrost
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - bifrost-postgres:/var/lib/postgresql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bifrost -d bifrost"]
+      interval: 5s
+      timeout: 10s
+      start_period: 20s
+      retries: 5
+
+volumes:
+  bifrost-postgres:
