@@ -15,10 +15,26 @@ type BifrostConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Name     string `yaml:"name"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	SSLMode  string `yaml:"sslmode"`
+	Host     string     `yaml:"host"`
+	Port     int        `yaml:"port"`
+	Name     string     `yaml:"name"`
+	User     string     `yaml:"user"`
+	Password string     `yaml:"password"`
+	SSL      SSLConfig  `yaml:"ssl"`
+	Pool     PoolConfig `yaml:"pool"`
+}
+
+type SSLConfig struct {
+	Mode     string `yaml:"mode"`
+	RootCert string `yaml:"root_cert"`
+	Cert     string `yaml:"cert"`
+	Key      string `yaml:"key"`
+}
+
+type PoolConfig struct {
+	MaxConns          int    `yaml:"max_conns"`
+	MinConns          int    `yaml:"min_conns"`
+	MaxConnLifetime   string `yaml:"max_conn_lifetime"`
+	MaxConnIdleTime   string `yaml:"max_conn_idle_time"`
+	HealthCheckPeriod string `yaml:"health_check_period"`
 }

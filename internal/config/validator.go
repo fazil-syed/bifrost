@@ -2,8 +2,8 @@ package config
 
 func addDefaultIfNotExist[T comparable](field *T, defaultValue T) {
 	var zeroVal T
-	if field == &zeroVal {
-		field = &defaultValue
+	if *field == zeroVal {
+		*field = defaultValue
 	}
 }
 
