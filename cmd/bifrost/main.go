@@ -8,6 +8,7 @@ import (
 	"github.com/fazil-syed/bifrost/internal/config"
 	"github.com/fazil-syed/bifrost/internal/database"
 	"github.com/fazil-syed/bifrost/internal/logger"
+	"github.com/fazil-syed/bifrost/internal/migrations"
 )
 
 func main() {
@@ -42,5 +43,11 @@ func main() {
 	}
 
 	logger.Info.Println("database connection successful")
+
+	if err := migrations.RunGlobal(ctx, db); err != nil {
+		logger.Error.Fatalf("run global migrations: %v", err)
+	}
+
+	logger.Info.Println("global migrations completed")
 
 }
