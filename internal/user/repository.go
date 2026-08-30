@@ -10,6 +10,7 @@ import (
 type UserRepository interface {
 	Create(ctx context.Context, user *User) error
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
+	GetByEmail(ctx context.Context, email Email) (*User, error)
 	Enable(ctx context.Context, id uuid.UUID, updatedAt time.Time) error
 	Disable(ctx context.Context, id uuid.UUID, updatedAt time.Time) error
 }

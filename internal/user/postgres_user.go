@@ -8,15 +8,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type postgresUserRepository struct {
-	db *pgxpool.Pool
+	tx pgx.Tx
 }
 
-func NewPostgresUserRepository(db *pgxpool.Pool) UserRepository {
-	return &postgresUserRepository{db: db}
+func NewPostgresUserRepository(tx pgx.Tx) UserRepository {
+	return &postgresUserRepository{tx: tx}
 }
 
 func (r *postgresUserRepository) Create(ctx context.Context, user *User) error {
@@ -30,7 +29,7 @@ func (r *postgresUserRepository) Create(ctx context.Context, user *User) error {
 		VALUES ($1,$2,$3,$4)
 	`
 
-	_, err := r.db.Exec(ctx, query, user.ID, user.Status, user.CreatedAt, user.UpdatedAt)
+	_, err := r.tx.Exec(ctx, query, user.ID, user.Status, user.CreatedAt, user.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create user: %w", err)
 	}
@@ -50,7 +49,7 @@ func (r *postgresUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*Us
 
 	var user User
 
-	err := r.db.QueryRow(ctx, query, id).Scan(&user.ID, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	err := r.tx.QueryRow(ctx, query, id).Scan(&user.ID, &user.Status, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -70,7 +69,7 @@ func (r *postgresUserRepository) Disable(ctx context.Context, id uuid.UUID, upda
 			updated_at = $2
 		WHERE id = $3
 	`
-	result, err := r.db.Exec(
+	result, err := r.tx.Exec(
 		ctx,
 		query,
 		UserStatusDisabled,
@@ -95,7 +94,7 @@ func (r *postgresUserRepository) Enable(ctx context.Context, id uuid.UUID, updat
 			updated_at = $2
 		WHERE id = $3
 	`
-	result, err := r.db.Exec(
+	result, err := r.tx.Exec(
 		ctx,
 		query,
 		UserStatusActive,
@@ -110,4 +109,27 @@ func (r *postgresUserRepository) Enable(ctx context.Context, id uuid.UUID, updat
 		return ErrUserNotFound
 	}
 	return nil
+}
+func (r *postgresUserRepository) GetByEmail(ctx context.Context, email Email) (*User, error) {
+	const query = `
+		SELECT
+			u.id,
+			u.status,
+			u.created_at,
+			u.updated_at
+		FROM users u
+		INNER JOIN user_emails ue
+			ON ue.user_id = u.id
+		WHERE ue.email = $1
+	`
+
+	var user User
+	err := r.tx.QueryRow(ctx, query, email).Scan(&user.ID, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("get user by email %s: %w", email, err)
+	}
+	return &user, nil
 }

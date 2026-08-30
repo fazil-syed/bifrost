@@ -5,6 +5,7 @@ import (
 	"flag"
 	"log"
 
+	"github.com/fazil-syed/bifrost/internal/bifrost"
 	"github.com/fazil-syed/bifrost/internal/config"
 	"github.com/fazil-syed/bifrost/internal/database"
 	"github.com/fazil-syed/bifrost/internal/logger"
@@ -49,5 +50,9 @@ func main() {
 	}
 
 	logger.Info.Println("global migrations completed")
+
+	app := bifrost.New(db)
+
+	app.Start()
 
 }
