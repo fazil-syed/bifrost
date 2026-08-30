@@ -134,3 +134,63 @@ func (s *userService) GetByEmail(ctx context.Context, email string) (*User, erro
 	}
 	return user, nil
 }
+
+func (s *userService) GetByExternalIdentity(ctx context.Context, issuer string, subject string) (*User, error) {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin get user by external identity transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	externalIdentityRepository := NewPostgresExternalIdentityRepository(tx)
+	externalIdentity, err := externalIdentityRepository.GetByIssuerAndSubject(ctx, issuer, subject)
+
+	if err != nil {
+		return nil, fmt.Errorf("get external identity: %w", err)
+	}
+
+	userRepository := NewPostgresUserRepository(tx)
+
+	user, err := userRepository.GetByID(ctx, externalIdentity.UserID)
+
+	if err != nil {
+		return nil, fmt.Errorf("get user for external identity: %w", err)
+	}
+
+	return user, nil
+}
+
+func (s *userService) LinkExternalIdentity(ctx context.Context, userID uuid.UUID, issuer string, subject string) error {
+	externalIdentity, err := NewExternalIdentity(userID, issuer, subject, time.Now())
+	if err != nil {
+		return fmt.Errorf("create external identity: %w", err)
+	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		fmt.Errorf("begin link external identity transaction: %w", err)
+	}
+
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	userRepository := NewPostgresUserRepository(tx)
+
+	if _, err := userRepository.GetByID(ctx, userID); err != nil {
+		return fmt.Errorf("get user for external identity: %w", err)
+	}
+
+	externalIdentityRepository := NewPostgresExternalIdentityRepository(tx)
+
+	if err := externalIdentityRepository.Create(ctx, *externalIdentity); err != nil {
+		return fmt.Errorf("link external identity: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit link external identity transaction: %w", err)
+	}
+
+	return nil
+}
