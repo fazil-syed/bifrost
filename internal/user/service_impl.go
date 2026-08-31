@@ -169,7 +169,7 @@ func (s *userService) LinkExternalIdentity(ctx context.Context, userID uuid.UUID
 	}
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		fmt.Errorf("begin link external identity transaction: %w", err)
+		return fmt.Errorf("begin link external identity transaction: %w", err)
 	}
 
 	defer func() {
@@ -193,4 +193,129 @@ func (s *userService) LinkExternalIdentity(ctx context.Context, userID uuid.UUID
 	}
 
 	return nil
+}
+
+func (s *userService) SetPassword(ctx context.Context, userID uuid.UUID, password string) error {
+	passwordHash, err := HashPassword(password)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin set password transaction: %w", err)
+	}
+
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	userRepository := NewPostgresUserRepository(tx)
+
+	_, err = userRepository.GetByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get user for set password %s: %w", userID, err)
+	}
+
+	credentialRepository := NewPostgresPasswordCredentialRepository(tx)
+
+	passwordCredential := NewPasswordCredential(userID, passwordHash, time.Now())
+
+	if err := credentialRepository.Create(ctx, passwordCredential); err != nil {
+		return fmt.Errorf("create password credential: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit set password credential: %w", err)
+	}
+
+	return nil
+}
+
+func (s *userService) VerifyPassword(ctx context.Context, userID uuid.UUID, password string) (bool, error) {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return false, fmt.Errorf("begin verify password transaction: %w", err)
+	}
+
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	userRepository := NewPostgresUserRepository(tx)
+
+	_, err = userRepository.GetByID(ctx, userID)
+	if err != nil {
+		return false, fmt.Errorf("get user for verify password %s: %w", userID, err)
+	}
+
+	credentialRepository := NewPostgresPasswordCredentialRepository(tx)
+
+	passwordCredential, err := credentialRepository.GetByUserID(ctx, userID)
+
+	if err != nil {
+		return false, fmt.Errorf("get password credential for user %s: %w", userID, err)
+	}
+
+	match, err := VerifyPassword(password, passwordCredential.PasswordHash)
+
+	if err != nil {
+		return false, fmt.Errorf("verify password: %w", err)
+	}
+
+	return match, nil
+}
+
+func (s *userService) ChangePassword(ctx context.Context, userID uuid.UUID, currentPassword string, newPassword string) error {
+	newPasswordHash, err := HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("hash new password: %w", err)
+	}
+
+	tx, err := s.db.Begin(ctx)
+
+	if err != nil {
+		return fmt.Errorf("begin change password transaction : %w", err)
+	}
+
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	userRepository := NewPostgresUserRepository(tx)
+
+	_, err = userRepository.GetByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get user for change password %s: %w", userID, err)
+	}
+
+	credentialRepository := NewPostgresPasswordCredentialRepository(tx)
+
+	passwordCredential, err := credentialRepository.GetByUserID(ctx, userID)
+
+	if err != nil {
+		return fmt.Errorf("get password credential for user %s: %w", userID, err)
+	}
+
+	match, err := VerifyPassword(currentPassword, passwordCredential.PasswordHash)
+
+	if err != nil {
+		return fmt.Errorf("verify password: %w", err)
+	}
+
+	if !match {
+		return ErrInvalidPassword
+	}
+
+	passwordCredential.PasswordHash = newPasswordHash
+	passwordCredential.UpdatedAt = time.Now()
+
+	if err := credentialRepository.Update(ctx, passwordCredential); err != nil {
+		return fmt.Errorf("update password credential: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit change password credential transaction")
+	}
+	return nil
+
 }

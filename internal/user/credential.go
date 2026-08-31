@@ -15,6 +15,7 @@ type PasswordCredential struct {
 }
 
 var ErrPasswordCredentialNotFound = errors.New("password credential not found")
+var ErrInvalidPassword = errors.New("invalid password")
 
 func NewPasswordCredential(userID uuid.UUID, passwordHash string, now time.Time) *PasswordCredential {
 	return &PasswordCredential{

@@ -15,4 +15,8 @@ type UserService interface {
 	LinkExternalIdentity(ctx context.Context, userID uuid.UUID, issuer string, subject string) error
 	Enable(ctx context.Context, id uuid.UUID) error
 	Disable(ctx context.Context, id uuid.UUID) error
+
+	SetPassword(ctx context.Context, userID uuid.UUID, password string) error
+	ChangePassword(ctx context.Context, userID uuid.UUID, currentPassword string, newPassword string) error
+	VerifyPassword(ctx context.Context, userID uuid.UUID, password string) (bool, error)
 }
