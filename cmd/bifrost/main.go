@@ -51,7 +51,11 @@ func main() {
 
 	logger.Info.Println("global migrations completed")
 
-	app := bifrost.New(db)
+	app, err := bifrost.New(db)
+
+	if err != nil {
+		logger.Error.Fatalf("failed to initialize bifrst : %v", err)
+	}
 
 	app.Start()
 
