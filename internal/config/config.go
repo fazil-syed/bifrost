@@ -1,9 +1,10 @@
 package config
 
 type Config struct {
-	Logging  LoggingConfig  `yaml:"logging"`
-	Bifrost  BifrostConfig  `yaml:"bifrost"`
-	Database DatabaseConfig `yaml:"database"`
+	Logging   LoggingConfig   `yaml:"logging"`
+	Bifrost   BifrostConfig   `yaml:"bifrost"`
+	Database  DatabaseConfig  `yaml:"database"`
+	Aerospike AerospikeConfig `yaml:"aerospike"`
 }
 
 type LoggingConfig struct {

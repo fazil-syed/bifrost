@@ -11,5 +11,9 @@ func Validate(cfg *Config) error {
 	addDefaultIfNotExist(&cfg.Logging.Level, "info")
 	addDefaultIfNotExist(&cfg.Bifrost.Name, "Bifrost")
 
+	if err := validateAerospike(cfg.Aerospike); err != nil {
+		return err
+	}
+
 	return nil
 }
