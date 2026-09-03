@@ -15,12 +15,40 @@ services:
     volumes:
       - bifrost-postgres:/var/lib/postgresql
 
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bifrost -d bifrost"]
       interval: 5s
       timeout: 10s
       start_period: 20s
       retries: 5
+  aerospike:
+    image: aerospike/aerospike-server-enterprise:8.1.2.4
+    container_name: bifrost-aerospike
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "3002:3002"
+      - "3003:3003"
+
+    volumes:
+      - ./docker/aerospike:/opt/aerospike/etc
+      - ./docker/aerospike/admin-password:/etc/aerospike/admin-password:ro
+      - bifrost-aerospike-data:/opt/aerospike/data
+
+    command: 
+    - "--config-file"
+    - "/opt/aerospike/etc/aerospike.conf"
+
+    healthcheck:
+      test: ["CMD-SHELL", "asinfo -h 127.0.0.1 -p 3000 -v status >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
 volumes:
   bifrost-postgres:
+  bifrost-aerospike-data:

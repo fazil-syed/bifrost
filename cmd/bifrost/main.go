@@ -5,6 +5,7 @@ import (
 	"flag"
 	"log"
 
+	"github.com/fazil-syed/bifrost/internal/aerospike"
 	"github.com/fazil-syed/bifrost/internal/bifrost"
 	"github.com/fazil-syed/bifrost/internal/config"
 	"github.com/fazil-syed/bifrost/internal/database"
@@ -51,7 +52,15 @@ func main() {
 
 	logger.Info.Println("global migrations completed")
 
-	app, err := bifrost.New(db)
+	aerospikeClient, err := aerospike.New(ctx, cfg.Aerospike)
+	if err != nil {
+		logger.Error.Fatalf("initialize aerospike: %w", err)
+	}
+	defer aerospikeClient.Close()
+
+	logger.Info.Println("aerospike client ready")
+
+	app, err := bifrost.New(db, aerospikeClient)
 
 	if err != nil {
 		logger.Error.Fatalf("failed to initialize bifrst : %v", err)

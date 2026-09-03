@@ -3,6 +3,7 @@ package bifrost
 import (
 	"fmt"
 
+	aero "github.com/aerospike/aerospike-client-go/v8"
 	"github.com/fazil-syed/bifrost/internal/authentication"
 	"github.com/fazil-syed/bifrost/internal/logger"
 	"github.com/fazil-syed/bifrost/internal/user"
@@ -12,10 +13,12 @@ import (
 type Application struct {
 	UserService           user.UserService
 	AuthenticationService authentication.AuthenticationService
+	AerospikeClient       *aero.Client
 }
 
 func New(
 	db *pgxpool.Pool,
+	aerospikeClient *aero.Client,
 ) (*Application, error) {
 	userService := user.NewUserService(db)
 	authenticationService, err := authentication.NewService(userService)
@@ -25,6 +28,7 @@ func New(
 	return &Application{
 		UserService:           userService,
 		AuthenticationService: authenticationService,
+		AerospikeClient:       aerospikeClient,
 	}, nil
 }
 

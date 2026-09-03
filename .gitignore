@@ -36,3 +36,5 @@ go.work.sum
 config.yaml
 
 docker-compose.yaml
+
+docker/aerospike/admin-password 
