@@ -98,14 +98,6 @@ func valdiateAerospikeConnection(cfg AerospikeConnectionConfig) error {
 		return fmt.Errorf("aerospike min_connections_per_node must be >= 0")
 	}
 
-	if cfg.MaxConnectionsPerNode <= 0 {
-		return fmt.Errorf("aerospike max_connections_per_node must be >0")
-	}
-
-	if cfg.MinConnectionsPerNode > cfg.MaxConnectionsPerNode {
-		return fmt.Errorf("aerospike min_connections_per_node cannot exceed max_connections_per_node")
-	}
-
 	if cfg.ConnectionQueueSize < 0 {
 		return fmt.Errorf("aerospike connection_queue_size must be >= 0")
 

@@ -29,7 +29,6 @@ type AerospikeTLSConfig struct {
 
 type AerospikeConnectionConfig struct {
 	MinConnectionsPerNode   int  `yaml:"min_connections_per_node"`
-	MaxConnectionsPerNode   int  `yaml:"max_connections_per_node"`
 	ConnectionQueueSize     int  `yaml:"connection_queue_size"`
 	LimitConnectionsToQueue bool `yaml:"limit_connections_to_queue"`
 }
