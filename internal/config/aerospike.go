@@ -1,6 +1,7 @@
 package config
 
 type AerospikeConfig struct {
+	Namespace      string                    `yaml:"namespace"`
 	Hosts          []AerospikeHostConfig     `yaml:"hosts"`
 	Authentication AerospikeAuthConfig       `yaml:"authentication"`
 	TLS            AerospikeTLSConfig        `yaml:"tls"`

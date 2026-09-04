@@ -1,10 +1,13 @@
 package config
 
+import "time"
+
 type Config struct {
 	Logging   LoggingConfig   `yaml:"logging"`
 	Bifrost   BifrostConfig   `yaml:"bifrost"`
 	Database  DatabaseConfig  `yaml:"database"`
 	Aerospike AerospikeConfig `yaml:"aerospike"`
+	Session   SessionConfig   `yaml:"session"`
 }
 
 type LoggingConfig struct {
@@ -38,4 +41,8 @@ type PoolConfig struct {
 	MaxConnLifetime   string `yaml:"max_conn_lifetime"`
 	MaxConnIdleTime   string `yaml:"max_conn_idle_time"`
 	HealthCheckPeriod string `yaml:"health_check_period"`
+}
+
+type SessionConfig struct {
+	Lifetime time.Duration `yaml:"lifetime"`
 }

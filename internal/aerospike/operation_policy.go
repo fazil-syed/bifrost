@@ -56,3 +56,11 @@ func newWritePolicy(cfg config.AerospikeConfig) (*aero.WritePolicy, error) {
 	policy.BasePolicy = *basePolicy
 	return policy, nil
 }
+
+func NewBasePolicy(cfg config.AerospikeConfig) (*aero.BasePolicy, error) {
+	return newBasePolicy(cfg)
+}
+
+func NewWritePolicy(cfg config.AerospikeConfig) (*aero.WritePolicy, error) {
+	return newWritePolicy(cfg)
+}
