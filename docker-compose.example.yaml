@@ -37,13 +37,18 @@ services:
       - ./docker/aerospike:/opt/aerospike/etc
       - ./docker/aerospike/admin-password:/etc/aerospike/admin-password:ro
       - bifrost-aerospike-data:/opt/aerospike/data
+      - bifrost-aerospike-smd:/opt/aerospike/smd
 
     command: 
     - "--config-file"
     - "/opt/aerospike/etc/aerospike.conf"
-
+  
     healthcheck:
-      test: ["CMD-SHELL", "asinfo -h 127.0.0.1 -p 3000 -v status >/dev/null 2>&1"]
+      test:
+        [
+          "CMD-SHELL",
+          "asinfo -h 127.0.0.1 -p 3003 -U admin -P \"$$(cat /opt/aerospike/etc/admin-password)\" -v status >/dev/null 2>&1"
+        ]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -52,3 +57,4 @@ services:
 volumes:
   bifrost-postgres:
   bifrost-aerospike-data:
+  bifrost-aerospike-smd:

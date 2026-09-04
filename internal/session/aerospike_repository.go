@@ -28,7 +28,7 @@ type AerospikeSessionRepository struct {
 	writePolicy *aero.WritePolicy
 }
 
-func NewAerospikeSession(client *aero.Client, namespace string, readPolicy *aero.BasePolicy, writePolicy *aero.WritePolicy) SessionRepository {
+func NewAerospikeSessionRepository(client *aero.Client, namespace string, readPolicy *aero.BasePolicy, writePolicy *aero.WritePolicy) SessionRepository {
 	return &AerospikeSessionRepository{
 		client:      client,
 		namespace:   namespace,

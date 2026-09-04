@@ -60,7 +60,7 @@ func main() {
 
 	logger.Info.Println("aerospike client ready")
 
-	app, err := bifrost.New(db, aerospikeClient)
+	app, err := bifrost.New(db, aerospikeClient, *cfg)
 
 	if err != nil {
 		logger.Error.Fatalf("failed to initialize bifrst : %v", err)
