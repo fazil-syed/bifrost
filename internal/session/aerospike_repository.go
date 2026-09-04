@@ -106,12 +106,12 @@ func (r *AerospikeSessionRepository) GetByID(ctx context.Context, id string) (*S
 	createdAtNanos, ok := record.Bins[binCreatedAt].(int64)
 
 	if !ok {
-		return nil, fmt.Errorf("session %q contains invalid created_at")
+		return nil, fmt.Errorf("session %q contains invalid created_at", id)
 	}
 	expiresAtNanos, ok := record.Bins[binExpiresAt].(int64)
 
 	if !ok {
-		return nil, fmt.Errorf("session %q contains invalid expires_at")
+		return nil, fmt.Errorf("session %q contains invalid expires_at", id)
 	}
 
 	session := &Session{
