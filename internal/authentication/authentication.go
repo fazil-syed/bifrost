@@ -8,10 +8,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/fazil-syed/bifrost/internal/session"
 	"github.com/fazil-syed/bifrost/internal/user"
 )
 
-func NewService(users user.UserService) (AuthenticationService, error) {
+func NewService(users user.UserService, sessionService session.SessionService) (AuthenticationService, error) {
 	dummyPassword, err := generateDummyPassword()
 	if err != nil {
 		return nil, fmt.Errorf("generate dummy password: %w", err)
@@ -24,8 +25,9 @@ func NewService(users user.UserService) (AuthenticationService, error) {
 	}
 
 	return &service{
-		users:     users,
-		dummyHash: dummyHash,
+		users:          users,
+		dummyHash:      dummyHash,
+		sessionService: sessionService,
 	}, nil
 }
 
@@ -57,6 +59,22 @@ func (s *service) AuthenticatePassword(ctx context.Context, email string, passwo
 		AuthenticatedAt:      time.Now(),
 	}, nil
 
+}
+
+func (s *service) LoginWithPassword(ctx context.Context, email string, pasword string) (*Principal, *session.Session, error) {
+	principal, err := s.AuthenticatePassword(ctx, email, pasword)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	now := time.Now()
+
+	loginSession, err := s.sessionService.Create(ctx, principal.UserID, string(principal.AuthenticationMethod), now)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create login session: %w", err)
+	}
+	return principal, loginSession, nil
 }
 
 func generateDummyPassword() (string, error) {

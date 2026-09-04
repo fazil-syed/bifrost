@@ -26,10 +26,6 @@ func New(
 	cfg config.Config,
 ) (*Application, error) {
 	userService := user.NewUserService(db)
-	authenticationService, err := authentication.NewService(userService)
-	if err != nil {
-		return nil, fmt.Errorf("initialize authentication service : %w", err)
-	}
 
 	readPolicy, err := aerospike.NewBasePolicy(cfg.Aerospike)
 
@@ -47,7 +43,11 @@ func New(
 	sessionService, err := session.NewSessionService(sessionRepository, cfg.Session.Lifetime)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("initialize session service: %w", err)
+	}
+	authenticationService, err := authentication.NewService(userService, sessionService)
+	if err != nil {
+		return nil, fmt.Errorf("initialize authentication service : %w", err)
 	}
 
 	return &Application{

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/fazil-syed/bifrost/internal/session"
 	"github.com/fazil-syed/bifrost/internal/user"
 	"github.com/google/uuid"
 )
@@ -29,9 +30,12 @@ type AuthenticationService interface {
 		email string,
 		password string,
 	) (*Principal, error)
+
+	LoginWithPassword(ctx context.Context, email string, paswword string) (*Principal, *session.Session, error)
 }
 
 type service struct {
-	users     user.UserService
-	dummyHash string
+	users          user.UserService
+	sessionService session.SessionService
+	dummyHash      string
 }
