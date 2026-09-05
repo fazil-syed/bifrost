@@ -8,6 +8,7 @@ type Config struct {
 	Database  DatabaseConfig  `yaml:"database"`
 	Aerospike AerospikeConfig `yaml:"aerospike"`
 	Session   SessionConfig   `yaml:"session"`
+	Token     TokenConfig     `yaml:"token"`
 }
 
 type LoggingConfig struct {
@@ -45,4 +46,9 @@ type PoolConfig struct {
 
 type SessionConfig struct {
 	Lifetime time.Duration `yaml:"lifetime"`
+}
+
+type TokenConfig struct {
+	AccessLifetime  string `yaml:"access_lifetime"`
+	RefreshLifetime string `yaml:"refresh_lifetime"`
 }
