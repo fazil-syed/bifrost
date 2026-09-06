@@ -3,7 +3,8 @@ package token
 import "errors"
 
 var (
-	ErrTokenNotFound = errors.New("token not found")
-	ErrTokenRevoked  = errors.New("token revoked")
-	ErrTokenExpired  = errors.New("token expired")
+	ErrTokenNotFound    = errors.New("token not found")
+	ErrTokenRevoked     = errors.New("token revoked")
+	ErrTokenExpired     = errors.New("token expired")
+	ErrRefreshTokenUsed = errors.New("refresh token already used")
 )
