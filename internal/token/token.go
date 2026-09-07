@@ -31,6 +31,7 @@ type Token struct {
 	TenantID      uuid.UUID
 	ApplicationID uuid.UUID
 	Scopes        []string
+	Audience      string
 	IssuedAt      time.Time
 	ExpiresAt     time.Time
 	RevokedAt     *time.Time
@@ -64,7 +65,7 @@ func NewRefreshToken(tenantID uuid.UUID, applicationID uuid.UUID, audience strin
 	return token, nil
 }
 
-func newToken(tokenType Type, userID uuid.UUID, tenantID uuid.UUID, applicationID uuid.UUID, audeience string, scopes []string, now time.Time, lifetime time.Duration) (*Token, error) {
+func newToken(tokenType Type, userID uuid.UUID, tenantID uuid.UUID, applicationID uuid.UUID, audience string, scopes []string, now time.Time, lifetime time.Duration) (*Token, error) {
 	if tokenType != TypeAccess && tokenType != TypeRefresh {
 		return nil, fmt.Errorf("invalid token type %q", tokenType)
 	}
@@ -77,8 +78,8 @@ func newToken(tokenType Type, userID uuid.UUID, tenantID uuid.UUID, applicationI
 	if applicationID == uuid.Nil {
 		return nil, fmt.Errorf("application ID is required")
 	}
-	if audeience == "" {
-		return nil, fmt.Errorf("audeience is required")
+	if audience == "" {
+		return nil, fmt.Errorf("audience is required")
 	}
 	if lifetime <= 0 {
 		return nil, fmt.Errorf("token lifetime must be greater than zero")
@@ -94,6 +95,7 @@ func newToken(tokenType Type, userID uuid.UUID, tenantID uuid.UUID, applicationI
 		TenantID:      tenantID,
 		ApplicationID: applicationID,
 		Scopes:        cloneScoppes(scopes),
+		Audience:      audience,
 		IssuedAt:      now,
 		ExpiresAt:     now.Add(lifetime),
 	}, nil
