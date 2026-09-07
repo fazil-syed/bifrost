@@ -153,7 +153,7 @@ func (r *AerospikeTokenRepository) ConsumeRefreshToken(id string, now time.Time)
 	}
 
 	if token.Type != TypeRefresh {
-		return nil, fmt.Errorf("token %q is not a refresh token", err)
+		return nil, fmt.Errorf("token %q is not a refresh token", id)
 	}
 
 	if !token.ExpiresAt.After(now) {
