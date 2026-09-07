@@ -250,10 +250,7 @@ func binsToBins(binMap aero.BinMap) []*aero.Bin {
 	bins := make([]*aero.Bin, 0, len(binMap))
 
 	for name, value := range binMap {
-		bins = append(bins, &aero.Bin{
-			Name:  name,
-			Value: value.(aero.Value),
-		})
+		bins = append(bins, aero.NewBin(name, value))
 	}
 	return bins
 }
