@@ -6,11 +6,11 @@ import (
 	"time"
 
 	aero "github.com/aerospike/aerospike-client-go/v8"
-	"github.com/aerospike/aerospike-client-go/v8/types"
 	"github.com/google/uuid"
 )
 
 const tokenSet = "tokens"
+const tokenFamilySet = "token_families"
 
 const (
 	binType        = "type"
@@ -25,6 +25,11 @@ const (
 	binFamilyID    = "family_id"
 	binStatus      = "status"
 	binUsedAt      = "used_at"
+)
+
+const (
+	binFamilyCreatedAt = "created_at"
+	binFamilyRevokedAt = "revoked_at"
 )
 
 type AerospikeTokenRepository struct {
@@ -49,7 +54,237 @@ func NewAerospikeTokenRepository(
 
 }
 
-func (r *AerospikeTokenRepository) Create(token *Token) error {
+func (r *AerospikeTokenRepository) CreateInitialTokenPair(family *RefreshTokenFamily, accessToken *Token, refreshToken *Token) error {
+	if family == nil {
+		return fmt.Errorf("refresh token family is required")
+	}
+	if accessToken == nil {
+		return fmt.Errorf("access token is required")
+	}
+	if refreshToken == nil {
+		return fmt.Errorf("refresh token is required")
+	}
+
+	if refreshToken.Type != TypeRefresh {
+		return fmt.Errorf("refresh token has invalid type")
+	}
+
+	if refreshToken.FamilyID != family.ID {
+		return fmt.Errorf("refresh token does not belong to family")
+	}
+
+	txn := aero.NewTxn()
+
+	familyKey, err := aero.NewKey(r.namespace, tokenFamilySet, family.ID.String())
+
+	if err != nil {
+		return fmt.Errorf("create refresh token family key: %w", err)
+	}
+
+	accessKey, err := aero.NewKey(r.namespace, tokenSet, accessToken.ID)
+
+	if err != nil {
+		return fmt.Errorf("create access token key: %w", err)
+	}
+	refreshKey, err := aero.NewKey(r.namespace, tokenSet, refreshToken.ID)
+	if err != nil {
+		return fmt.Errorf("create refresh token key: %w", err)
+	}
+
+	writePolicy := *r.writePolicy
+
+	writePolicy.Txn = txn
+	writePolicy.RecordExistsAction = aero.CREATE_ONLY
+
+	if err := r.client.PutBins(&writePolicy, familyKey, aero.NewBin(binFamilyCreatedAt, family.CreatedAt.UnixNano())); err != nil {
+		r.client.Abort(txn)
+		return fmt.Errorf("create token family: %w", err)
+	}
+	if err := r.client.PutBins(&writePolicy, accessKey, binsToBins(tokenBins(accessToken))...); err != nil {
+		r.client.Abort(txn)
+		return fmt.Errorf("create access token: %w", err)
+	}
+	if err := r.client.PutBins(&writePolicy, refreshKey, binsToBins(tokenBins(refreshToken))...); err != nil {
+		r.client.Abort(txn)
+		return fmt.Errorf("create refresh token: %w", err)
+	}
+
+	if _, err := r.client.Commit(txn); err != nil {
+		return fmt.Errorf("commit initial token pair: %w", err)
+	}
+
+	return nil
+
+}
+
+func (r *AerospikeTokenRepository) RotateRefreshToken(familyID string, presentedRefreshTokenID string, accessToken *Token, refreshToken *Token, now time.Time) error {
+	if familyID == "" {
+		return fmt.Errorf("refresh token family id is required")
+	}
+
+	if presentedRefreshTokenID == "" {
+		return fmt.Errorf("presented refresh token ID is required")
+	}
+
+	if accessToken == nil {
+		return fmt.Errorf("access token is required")
+	}
+	if refreshToken == nil {
+		return fmt.Errorf("refresh token is required")
+	}
+
+	if refreshToken.Type != TypeRefresh {
+		return fmt.Errorf("refresh token has invalid type")
+	}
+
+	fID, err := uuid.Parse(familyID)
+	if err != nil {
+		return fmt.Errorf("parse refresh token family id: %w", err)
+	}
+	if refreshToken.FamilyID != fID {
+		return fmt.Errorf("replacement refresh token does not belong to family")
+	}
+	familyKey, err := aero.NewKey(r.namespace, tokenFamilySet, familyID)
+
+	if err != nil {
+		return fmt.Errorf("create refresh token family key: %w", err)
+	}
+
+	presentedKey, err := aero.NewKey(r.namespace, tokenSet, presentedRefreshTokenID)
+
+	if err != nil {
+		return fmt.Errorf("create presented refresh token key: %w", err)
+	}
+
+	replacmentAccessKey, err := aero.NewKey(r.namespace, tokenSet, accessToken.ID)
+
+	if err != nil {
+		return fmt.Errorf("create replacement access token key: %w", err)
+	}
+
+	replacementRefreshKey, err := aero.NewKey(r.namespace, tokenSet, refreshToken.ID)
+
+	if err != nil {
+		return fmt.Errorf("create replacement refresh token key: %w", err)
+	}
+
+	txn := aero.NewTxn()
+
+	readPolicy := *r.readPolicy
+	readPolicy.Txn = txn
+
+	writePolicy := *r.writePolicy
+
+	writePolicy.Txn = txn
+
+	familyRecord, err := r.client.Get(&readPolicy, familyKey)
+
+	if err != nil {
+		r.client.Abort(txn)
+		if errors.Is(err, aero.ErrKeyNotFound) {
+			return ErrTokenNotFound
+		}
+		return fmt.Errorf("read refresh token family: %w", err)
+	}
+
+	presentedRecord, err := r.client.Get(&readPolicy, presentedKey)
+
+	if err != nil {
+		r.client.Abort(txn)
+		if errors.Is(err, aero.ErrKeyNotFound) {
+			return ErrTokenNotFound
+		}
+		return fmt.Errorf("read presented refresh token: %w", err)
+	}
+
+	familyRevoked := false
+
+	if value, exists := familyRecord.Bins[binFamilyRevokedAt]; exists {
+		familyRevoked = value != nil
+	}
+
+	if familyRevoked {
+		r.client.Abort(txn)
+		return ErrTokenRevoked
+	}
+
+	presented, err := tokenFromRecord(presentedRecord)
+
+	if err != nil {
+		r.client.Abort(txn)
+		return fmt.Errorf("decode presented refresh token: %w", err)
+	}
+
+	if presented.Type != TypeRefresh {
+		r.client.Abort(txn)
+		return ErrInvalidTokenType
+	}
+
+	if presented.FamilyID.String() != familyID {
+		r.client.Abort(txn)
+		return ErrTokenNotFound
+	}
+
+	if presented.RevokedAt != nil {
+		r.client.Abort(txn)
+		return ErrTokenRevoked
+	}
+
+	if !presented.ExpiresAt.After(now) {
+		r.client.Abort(txn)
+		return ErrTokenExpired
+	}
+
+	// Reuse of already consumed RT is the replay attach path
+
+	if presented.Status == RefreshTokenUsed {
+		writePolicy.RecordExistsAction = aero.UPDATE_ONLY
+		if err := r.client.PutBins(&writePolicy, familyKey, aero.NewBin(binFamilyRevokedAt, now.UnixNano())); err != nil {
+			r.client.Abort(txn)
+			return fmt.Errorf("revoke refresh token family after replay: %w", err)
+		}
+
+		if _, err := r.client.Commit(txn); err != nil {
+			return fmt.Errorf("commit refresh token replay revocation: %w", err)
+		}
+		return ErrRefreshTokenReplay
+	}
+
+	if presented.Status != RefreshTokenActive {
+		r.client.Abort(txn)
+		return ErrTokenRevoked
+	}
+
+	// normal rotation
+
+	writePolicy.RecordExistsAction = aero.UPDATE_ONLY
+	//consume current refresh token
+	if err := r.client.PutBins(&writePolicy, presentedKey, aero.NewBin(binStatus, string(RefreshTokenUsed)), aero.NewBin(binUsedAt, now.UnixNano())); err != nil {
+		r.client.Abort(txn)
+		return fmt.Errorf("consume refresh token: %w", err)
+	}
+
+	writePolicy.RecordExistsAction = aero.CREATE_ONLY
+
+	//create access token
+	if err := r.client.PutBins(&writePolicy, replacmentAccessKey, binsToBins(tokenBins(accessToken))...); err != nil {
+		r.client.Abort(txn)
+		return fmt.Errorf("create replacement access token: %w", err)
+	}
+
+	//create refresh token
+
+	if err := r.client.PutBins(&writePolicy, replacementRefreshKey, binsToBins(tokenBins(refreshToken))...); err != nil {
+		return fmt.Errorf("create replacement refresh token: %w", err)
+	}
+
+	if _, err := r.client.Commit(txn); err != nil {
+		return fmt.Errorf("commit refresh token rotation: %w", err)
+	}
+	return nil
+}
+
+func (r *AerospikeTokenRepository) CreateToken(token *Token) error {
 	if token == nil {
 		return fmt.Errorf("token is required")
 	}
@@ -71,7 +306,7 @@ func (r *AerospikeTokenRepository) Create(token *Token) error {
 	return nil
 }
 
-func (r *AerospikeTokenRepository) GetByID(id string) (*Token, error) {
+func (r *AerospikeTokenRepository) GetTokenByID(id string) (*Token, error) {
 	if id == "" {
 		return nil, fmt.Errorf("token ID is required")
 	}
@@ -97,7 +332,7 @@ func (r *AerospikeTokenRepository) GetByID(id string) (*Token, error) {
 	return token, nil
 }
 
-func (r *AerospikeTokenRepository) Revoke(id string) error {
+func (r *AerospikeTokenRepository) RevokeToken(id string) error {
 	if id == "" {
 		return fmt.Errorf("token ID is required")
 	}
@@ -129,90 +364,6 @@ func (r *AerospikeTokenRepository) Revoke(id string) error {
 	return nil
 }
 
-func (r *AerospikeTokenRepository) ConsumeRefreshToken(id string, now time.Time) (*Token, error) {
-	if id == "" {
-		return nil, fmt.Errorf("token ID is required")
-	}
-
-	key, err := r.key(id)
-	if err != nil {
-		return nil, err
-	}
-
-	record, err := r.client.Get(r.readPolicy, key)
-
-	if err != nil {
-		if errors.Is(err, aero.ErrKeyNotFound) {
-			return nil, ErrTokenNotFound
-		}
-		return nil, fmt.Errorf("get refresh token: %w", err)
-	}
-	token, err := tokenFromRecord(record)
-	if err != nil {
-		return nil, fmt.Errorf("decode refresh token: %w", err)
-	}
-
-	if token.Type != TypeRefresh {
-		return nil, fmt.Errorf("token %q is not a refresh token", id)
-	}
-
-	if !token.ExpiresAt.After(now) {
-		return nil, ErrTokenExpired
-	}
-
-	if token.RevokedAt != nil {
-		return nil, ErrTokenRevoked
-	}
-	if token.Status == RefreshTokenUsed {
-		return nil, ErrRefreshTokenUsed
-	}
-	if token.Status == RefreshTokenRevoked {
-		return nil, ErrTokenRevoked
-	}
-
-	// Compare and set using record generation
-	// Only the request holding this generation may transition ACTIVE-USED
-
-	policy := *r.writePolicy
-	policy.RecordExistsAction = aero.UPDATE_ONLY
-	policy.GenerationPolicy = aero.EXPECT_GEN_EQUAL
-	policy.Generation = record.Generation
-	policy.Expiration = aero.TTLDontUpdate
-
-	bins := []*aero.Bin{
-		{
-			Name:  binStatus,
-			Value: aero.NewStringValue(string(RefreshTokenUsed)),
-		},
-		{
-			Name:  binUsedAt,
-			Value: aero.NewLongValue(now.UnixNano()),
-		},
-	}
-
-	if err := r.client.PutBins(&policy, key, bins...); err != nil {
-		if err.Matches(types.GENERATION_ERROR) {
-			// Another request changed this token after our read
-			// Re-read so we can return a meaningful domain error
-			current, readErr := r.GetByID(id)
-			if readErr != nil {
-				return nil, readErr
-			}
-			if current.Status == RefreshTokenUsed {
-				return nil, ErrRefreshTokenUsed
-			}
-			if current.RevokedAt != nil || current.Status == RefreshTokenRevoked {
-				return nil, ErrTokenRevoked
-			}
-			return nil, fmt.Errorf("refresh token changed concurrently")
-		}
-		return nil, fmt.Errorf("consume refresh token: %w", err)
-	}
-	token.UsedAt = timePtr(now)
-	token.Status = RefreshTokenUsed
-	return token, nil
-}
-
 func (r *AerospikeTokenRepository) key(id string) (*aero.Key, error) {
 	if id == "" {
 		return nil, fmt.Errorf("token ID is required")
@@ -223,6 +374,51 @@ func (r *AerospikeTokenRepository) key(id string) (*aero.Key, error) {
 		return nil, fmt.Errorf("create token key: %w", err)
 	}
 	return key, nil
+}
+
+func (r *AerospikeTokenRepository) CreateRefreshTokenFamily(family *RefreshTokenFamily) error {
+	if family == nil {
+		return fmt.Errorf("refresh token family is required")
+	}
+
+	key, err := aero.NewKey(r.namespace, tokenFamilySet, family.ID.String())
+	if err != nil {
+		return fmt.Errorf("create refresh token family key: %w", err)
+	}
+
+	policy := *r.writePolicy
+	policy.RecordExistsAction = aero.CREATE_ONLY
+	policy.Expiration = 0
+
+	bins := aero.BinMap{
+		binFamilyCreatedAt: family.CreatedAt.UnixNano(),
+	}
+
+	if family.RevokedAt != nil {
+		bins[binFamilyRevokedAt] = family.RevokedAt.UnixNano()
+	}
+
+	if err := r.client.PutBins(&policy, key, binsToBins(bins)...); err != nil {
+		return fmt.Errorf("create refresh token family: %w", err)
+	}
+
+	return nil
+
+}
+
+func (r *AerospikeTokenRepository) GetRefreshTokenFamilyById(id string) (*RefreshTokenFamily, error) {
+	if id == "" {
+		return nil, fmt.Errorf("refresh token family id is required")
+	}
+
+	key, err := aero.NewKey(r.namespace, tokenFamilySet, id)
+	if err != nil {
+		return nil, fmt.Errorf("create refresh token family key: %w", err)
+	}
+
+	record, err := r.client.Get(r.readPolicy, key)
+
+	return refreshTokenFamilyFromRecord(record)
 }
 
 func ttlSeconds(issuedAt, expiresAt time.Time) uint32 {
@@ -282,6 +478,33 @@ func tokenBins(token *Token) aero.BinMap {
 		}
 	}
 	return bins
+}
+
+func refreshTokenFamilyFromRecord(record *aero.Record) (*RefreshTokenFamily, error) {
+	createdAt, err := parseTimeBin(record.Bins[binFamilyCreatedAt], binFamilyCreatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	familyID, err := uuid.Parse(record.Key.String())
+
+	if err != nil {
+		return nil, fmt.Errorf("parse refresh token family ID: %w", err)
+	}
+
+	family := &RefreshTokenFamily{
+		ID:        familyID,
+		CreatedAt: createdAt,
+	}
+
+	if value, exists := record.Bins[binFamilyRevokedAt]; exists {
+		revokedAt, err := parseTimeBin(value, binFamilyRevokedAt)
+		if err != nil {
+			return nil, err
+		}
+		family.RevokedAt = &revokedAt
+	}
+	return family, nil
 }
 
 func tokenFromRecord(record *aero.Record) (*Token, error) {
