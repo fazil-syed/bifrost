@@ -30,6 +30,8 @@ type TokenService interface {
 		refreshTokenID string,
 		now time.Time,
 	) (*TokenPair, error)
+
+	Revoke(tokenID string) error
 }
 
 type TokenPair struct {
