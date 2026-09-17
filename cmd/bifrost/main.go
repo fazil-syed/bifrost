@@ -52,9 +52,15 @@ func main() {
 
 	logger.Info.Println("global migrations completed")
 
+	if err := migrations.RunAllTenants(ctx, db, cfg.Database); err != nil {
+		logger.Error.Fatalf("run tenant migrations: %v", err)
+	}
+
+	logger.Info.Println("tenant migrations completed")
+
 	aerospikeClient, err := aerospike.New(ctx, cfg.Aerospike)
 	if err != nil {
-		logger.Error.Fatalf("initialize aerospike: %w", err)
+		logger.Error.Fatalf("initialize aerospike: %v", err)
 	}
 	defer aerospikeClient.Close()
 
