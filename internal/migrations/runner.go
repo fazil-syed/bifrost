@@ -2,14 +2,11 @@ package migrations
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 
 	"github.com/fazil-syed/bifrost/internal/config"
 	"github.com/fazil-syed/bifrost/internal/database"
-	"github.com/fazil-syed/bifrost/internal/logger"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -73,10 +70,6 @@ func RunAllTenants(ctx context.Context, globalPool *pgxpool.Pool, databaseConfig
 	`)
 
 	if err != nil {
-		if errors.Is(pgx.ErrNoRows, err) {
-			logger.Debug.Println("no tenants found")
-			return nil
-		}
 		return fmt.Errorf("list tenant databases: %w", err)
 	}
 
