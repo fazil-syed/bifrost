@@ -51,7 +51,7 @@ func (r *postgresTenantRepository) Create(ctx context.Context, tenant *Tenant) e
 	return nil
 }
 
-func (r *postgresTenantRepository) GetBydID(ctx context.Context, id uuid.UUID) (*Tenant, error) {
+func (r *postgresTenantRepository) GetByID(ctx context.Context, id uuid.UUID) (*Tenant, error) {
 	const query = `
 		SELECT
 			id,
