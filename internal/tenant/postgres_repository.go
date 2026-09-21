@@ -15,7 +15,7 @@ type postgresTenantRepository struct {
 	tx pgx.Tx
 }
 
-func NewTenantRepository(tx pgx.Tx) TenantRepository {
+func NewPostgresTenantRepository(tx pgx.Tx) TenantRepository {
 	return &postgresTenantRepository{tx: tx}
 }
 
