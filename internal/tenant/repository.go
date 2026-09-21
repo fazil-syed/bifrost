@@ -10,7 +10,7 @@ import (
 type TenantRepository interface {
 	Create(ctx context.Context, tenant *Tenant) error
 	GetBydID(ctx context.Context, id uuid.UUID) (*Tenant, error)
-	GetbySlug(ctx context.Context, slug string) (*Tenant, error)
+	GetBySlug(ctx context.Context, slug string) (*Tenant, error)
 
 	List(ctx context.Context) ([]*Tenant, error)
 
