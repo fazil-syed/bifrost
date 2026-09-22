@@ -14,6 +14,4 @@ type TeamRepository interface {
 	GetBySlug(ctx context.Context, slug string) (*Team, error)
 
 	List(ctx context.Context) ([]*Team, error)
-
-	Lock(ctx context.Context, id uuid.UUID) error
 }

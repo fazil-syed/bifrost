@@ -8,7 +8,7 @@ import (
 )
 
 type MembershipRepository interface {
-	Create(ctx context.Context, membership Membership) error
+	Create(ctx context.Context, membership *Membership) error
 
 	Get(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) (*Membership, error)
 
@@ -17,4 +17,6 @@ type MembershipRepository interface {
 	UpdateType(ctx context.Context, teamID uuid.UUID, userID uuid.UUID, membershipType MembershipType, updatedAt time.Time) error
 
 	Delete(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error
+
+	CountOwners(ctx context.Context, teamID uuid.UUID) (int, error)
 }
