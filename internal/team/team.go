@@ -2,6 +2,7 @@ package team
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +17,8 @@ type Team struct {
 }
 
 func New(name, slug string, now time.Time) (*Team, error) {
+	name = strings.TrimSpace(name)
+	slug = strings.TrimSpace(slug)
 	if name == "" {
 		return nil, fmt.Errorf("team name is required")
 	}

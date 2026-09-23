@@ -9,4 +9,6 @@ var (
 	ErrApplicationNameInvalid = errors.New("application name is invalid")
 
 	ErrApplicationSlugInvalid = errors.New("application slug is invalid")
+
+	ErrApplicationOwnerInvalid = errors.New("application must have exactly one owner")
 )

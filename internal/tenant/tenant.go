@@ -2,6 +2,7 @@ package tenant
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,6 +26,9 @@ type Tenant struct {
 }
 
 func New(name, slug, databaseName string, now time.Time) (*Tenant, error) {
+	name = strings.TrimSpace(name)
+	slug = strings.TrimSpace(slug)
+	databaseName = strings.TrimSpace(databaseName)
 	if name == "" {
 		return nil, fmt.Errorf("tenant name is required")
 	}
