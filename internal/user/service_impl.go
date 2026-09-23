@@ -34,9 +34,7 @@ func (s *userService) Create(ctx context.Context, email Email) (*User, error) {
 		return nil, fmt.Errorf("begin user creation transaction: %w", err)
 	}
 
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+    defer tx.Rollback(ctx) 
 	userRpository := NewPostgresUserRepository(tx)
 	userEmailRepository := NewPostgresUserEmailRepository(tx)
 	if err := userRpository.Create(ctx, user); err != nil {
@@ -57,9 +55,7 @@ func (s *userService) GetByID(ctx context.Context, id uuid.UUID) (*User, error) 
 		return nil, fmt.Errorf("begin get user transaction: %w", err)
 	}
 
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+    defer tx.Rollback(ctx) 
 	userRpository := NewPostgresUserRepository(tx)
 	user, err := userRpository.GetByID(ctx, id)
 	if err != nil {
@@ -73,9 +69,7 @@ func (s *userService) Disable(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return fmt.Errorf("begin user disable transaction: %w", err)
 	}
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+    defer tx.Rollback(ctx) 
 	userRpository := NewPostgresUserRepository(tx)
 	user, err := userRpository.GetByID(ctx, id)
 	if err != nil {
@@ -85,7 +79,7 @@ func (s *userService) Disable(ctx context.Context, id uuid.UUID) error {
 	if user.Status == UserStatusDisabled {
 		return nil
 	}
-	if err := userRpository.Disable(ctx, user.ID, time.Now()); err != nil {
+	if err := userRpository.Disable(ctx, user.ID, time.Now().UTC()); err != nil {
 		return fmt.Errorf("disable user: %w", err)
 	}
 	return nil
@@ -96,9 +90,7 @@ func (s *userService) Enable(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("begin user enable transaction: %w", err)
 	}
 
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+    defer tx.Rollback(ctx) 
 	userRpository := NewPostgresUserRepository(tx)
 	user, err := userRpository.GetByID(ctx, id)
 	if err != nil {
@@ -108,7 +100,7 @@ func (s *userService) Enable(ctx context.Context, id uuid.UUID) error {
 	if user.Status == UserStatusActive {
 		return nil
 	}
-	if err := userRpository.Enable(ctx, user.ID, time.Now()); err != nil {
+	if err := userRpository.Enable(ctx, user.ID, time.Now().UTC()); err != nil {
 		return fmt.Errorf("enable user: %w", err)
 	}
 	return nil
@@ -123,9 +115,7 @@ func (s *userService) GetByEmail(ctx context.Context, email string) (*User, erro
 	if err != nil {
 		return nil, fmt.Errorf("begin get user by email transaction: %w", err)
 	}
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+    defer tx.Rollback(ctx) 
 
 	userRepository := NewPostgresUserRepository(tx)
 	user, err := userRepository.GetByEmail(ctx, canonicalEmail)
@@ -140,9 +130,7 @@ func (s *userService) GetByExternalIdentity(ctx context.Context, issuer string, 
 	if err != nil {
 		return nil, fmt.Errorf("begin get user by external identity transaction: %w", err)
 	}
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+    defer tx.Rollback(ctx) 
 
 	externalIdentityRepository := NewPostgresExternalIdentityRepository(tx)
 	externalIdentity, err := externalIdentityRepository.GetByIssuerAndSubject(ctx, issuer, subject)
@@ -163,7 +151,7 @@ func (s *userService) GetByExternalIdentity(ctx context.Context, issuer string, 
 }
 
 func (s *userService) LinkExternalIdentity(ctx context.Context, userID uuid.UUID, issuer string, subject string) error {
-	externalIdentity, err := NewExternalIdentity(userID, issuer, subject, time.Now())
+	externalIdentity, err := NewExternalIdentity(userID, issuer, subject, time.Now().UTC())
 	if err != nil {
 		return fmt.Errorf("create external identity: %w", err)
 	}
@@ -172,9 +160,7 @@ func (s *userService) LinkExternalIdentity(ctx context.Context, userID uuid.UUID
 		return fmt.Errorf("begin link external identity transaction: %w", err)
 	}
 
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+    defer tx.Rollback(ctx) 
 
 	userRepository := NewPostgresUserRepository(tx)
 
@@ -205,9 +191,7 @@ func (s *userService) SetPassword(ctx context.Context, userID uuid.UUID, passwor
 		return fmt.Errorf("begin set password transaction: %w", err)
 	}
 
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+    defer tx.Rollback(ctx) 
 
 	userRepository := NewPostgresUserRepository(tx)
 
@@ -218,7 +202,7 @@ func (s *userService) SetPassword(ctx context.Context, userID uuid.UUID, passwor
 
 	credentialRepository := NewPostgresPasswordCredentialRepository(tx)
 
-	passwordCredential := NewPasswordCredential(userID, passwordHash, time.Now())
+	passwordCredential := NewPasswordCredential(userID, passwordHash, time.Now().UTC())
 
 	if err := credentialRepository.Create(ctx, passwordCredential); err != nil {
 		return fmt.Errorf("create password credential: %w", err)
@@ -237,9 +221,7 @@ func (s *userService) VerifyPassword(ctx context.Context, userID uuid.UUID, pass
 		return false, fmt.Errorf("begin verify password transaction: %w", err)
 	}
 
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+    defer tx.Rollback(ctx) 
 
 	userRepository := NewPostgresUserRepository(tx)
 
@@ -277,9 +259,7 @@ func (s *userService) ChangePassword(ctx context.Context, userID uuid.UUID, curr
 		return fmt.Errorf("begin change password transaction : %w", err)
 	}
 
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+    defer tx.Rollback(ctx) 
 
 	userRepository := NewPostgresUserRepository(tx)
 
@@ -307,7 +287,7 @@ func (s *userService) ChangePassword(ctx context.Context, userID uuid.UUID, curr
 	}
 
 	passwordCredential.PasswordHash = newPasswordHash
-	passwordCredential.UpdatedAt = time.Now()
+	passwordCredential.UpdatedAt = time.Now().UTC()
 
 	if err := credentialRepository.Update(ctx, passwordCredential); err != nil {
 		return fmt.Errorf("update password credential: %w", err)
