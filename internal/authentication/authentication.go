@@ -56,7 +56,7 @@ func (s *service) AuthenticatePassword(ctx context.Context, email string, passwo
 	return &Principal{
 		UserID:               bifrostUser.ID,
 		AuthenticationMethod: AuthenticationMethodPassword,
-		AuthenticatedAt:      time.Now(),
+		AuthenticatedAt:      time.Now().UTC(),
 	}, nil
 
 }
@@ -68,7 +68,7 @@ func (s *service) LoginWithPassword(ctx context.Context, email string, pasword s
 		return nil, nil, err
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	loginSession, err := s.sessionService.Create(ctx, principal.UserID, string(principal.AuthenticationMethod), now)
 	if err != nil {

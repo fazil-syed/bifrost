@@ -18,7 +18,7 @@ func NewTeamService(db *pgxpool.Pool) TeamService {
 }
 
 func (s *teamService) Create(ctx context.Context, name string, slug string, ownerUserID uuid.UUID) (*Team, error) {
-	now := time.Now()
+	now := time.Now().UTC()
 	team, err := New(name, slug, now)
 	if err != nil {
 		return nil, err

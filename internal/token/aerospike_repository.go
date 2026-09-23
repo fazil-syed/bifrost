@@ -342,7 +342,7 @@ func (r *AerospikeTokenRepository) RevokeToken(id string) error {
 		return err
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	policy := *r.writePolicy
 	policy.RecordExistsAction = aero.UPDATE_ONLY
