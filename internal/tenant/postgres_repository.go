@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/fazil-syed/bifrost/internal/database"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type postgresTenantRepository struct {
@@ -36,8 +36,7 @@ func (r *postgresTenantRepository) Create(ctx context.Context, tenant *Tenant) e
 	_, err := r.tx.Exec(ctx, query, tenant.ID, tenant.Name, tenant.Slug, tenant.DatabaseName, tenant.Status, tenant.CreatedAt, tenant.UpdatedAt)
 
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // Unique constraint violation error code
+		if pgErr, err := database.IsUniqueViolation(err); err {
 			switch pgErr.ConstraintName {
 			case "tenants_slug_key":
 				return ErrTenantSlugExists
