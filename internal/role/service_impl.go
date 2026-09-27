@@ -25,12 +25,33 @@ func NewRoleService(db *pgxpool.Pool, applicationService application.Application
 	return &roleService{db: db, applicationService: applicationService, userService: userService, teamService: teamService, membershipService: membershipService}
 }
 
-func (s *roleService) authorizeManagement(ctx context.Context, actorUserID uuid.UUID, applicationID uuid.UUID) error {
+func actorUserIDFromContext(ctx context.Context) (uuid.UUID, error) {
+	// Temporary key before implementing auth context
+
+	value := ctx.Value(actorUserIDContextKey{})
+
+	if value == nil {
+		return uuid.Nil, fmt.Errorf("actor user ID missing from context")
+	}
+
+	userID, ok := value.(uuid.UUID)
+
+	if !ok {
+		return uuid.Nil, fmt.Errorf("invalid actor user ID in context")
+	}
+
+	return userID, nil
+}
+
+type actorUserIDContextKey struct{}
+
+func (s *roleService) authorizeManagement(ctx context.Context, applicationID uuid.UUID) error {
 	application, err := s.applicationService.GetByID(ctx, applicationID)
 	if err != nil {
 		return fmt.Errorf("get application: %w", err)
 	}
 
+	actorUserID, err := actorUserIDFromContext(ctx)
 	if application.OwnerUserID != nil {
 		if *application.OwnerUserID != actorUserID {
 			return ErrRoleUnauthorized
@@ -57,8 +78,8 @@ func (s *roleService) authorizeManagement(ctx context.Context, actorUserID uuid.
 
 }
 
-func (s *roleService) Create(ctx context.Context, actorUserID uuid.UUID, applicationID uuid.UUID, name string) (*Role, error) {
-	if err := s.authorizeManagement(ctx, actorUserID, applicationID); err != nil {
+func (s *roleService) Create(ctx context.Context, applicationID uuid.UUID, name string) (*Role, error) {
+	if err := s.authorizeManagement(ctx, applicationID); err != nil {
 		return nil, err
 	}
 
@@ -110,13 +131,13 @@ func (s *roleService) ListByApplication(ctx context.Context, applicationID uuid.
 	return repository.ListByApplication(ctx, applicationID)
 }
 
-func (s *roleService) Update(ctx context.Context, actorUserID uuid.UUID, id uuid.UUID, name string) error {
+func (s *roleService) Update(ctx context.Context, id uuid.UUID, name string) error {
 	role, err := s.GetByID(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	if err := s.authorizeManagement(ctx, actorUserID, role.ApplicationID); err != nil {
+	if err := s.authorizeManagement(ctx, role.ApplicationID); err != nil {
 		return err
 	}
 
@@ -150,13 +171,13 @@ func (s *roleService) Update(ctx context.Context, actorUserID uuid.UUID, id uuid
 	return nil
 }
 
-func (s *roleService) Delete(ctx context.Context, actorUserID uuid.UUID, id uuid.UUID) error {
+func (s *roleService) Delete(ctx context.Context, id uuid.UUID) error {
 	role, err := s.GetByID(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	if err := s.authorizeManagement(ctx, actorUserID, role.ApplicationID); err != nil {
+	if err := s.authorizeManagement(ctx, role.ApplicationID); err != nil {
 		return err
 	}
 
