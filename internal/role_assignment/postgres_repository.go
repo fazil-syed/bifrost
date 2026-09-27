@@ -14,6 +14,10 @@ type postgresRoleAssignmentRepository struct {
 	tx pgx.Tx
 }
 
+func NewRoleAssignmentRepository(tx pgx.Tx) RoleAssignmentRepository {
+	return &postgresRoleAssignmentRepository{tx: tx}
+}
+
 func (r *postgresRoleAssignmentRepository) Create(ctx context.Context, assignment *RoleAssignment) error {
 	const query = `
 		INSERT INTO role_assignments (
