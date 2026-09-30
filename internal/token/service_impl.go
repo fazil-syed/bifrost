@@ -1,20 +1,22 @@
 package token
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/fazil-syed/bifrost/internal/authorization"
 	"github.com/google/uuid"
 )
 
 type tokenServiceImpl struct {
 	repository           TokenRepository
-	authorization        AuthorizationEvaluator
+	authorization        authorization.AuthorizationService
 	accessTokenLifetime  time.Duration
 	refreshTokenLifetime time.Duration
 }
 
-func NewTokenService(repository TokenRepository, authorization AuthorizationEvaluator, accessTokenLifetime time.Duration, refreshTokenLifetime time.Duration) (TokenService, error) {
+func NewTokenService(repository TokenRepository, authorization authorization.AuthorizationService, accessTokenLifetime time.Duration, refreshTokenLifetime time.Duration) (TokenService, error) {
 	if repository == nil {
 		return nil, ErrTokenRepositoryRequired
 	}
@@ -37,8 +39,8 @@ func NewTokenService(repository TokenRepository, authorization AuthorizationEval
 	}, nil
 }
 
-func (s *tokenServiceImpl) Issue(tenantID uuid.UUID, applicationID uuid.UUID, userID uuid.UUID, requestedScopes []string, now time.Time) (*TokenPair, error) {
-	effectiveScopes, err := s.authorization.Evaluate(tenantID, applicationID, userID, requestedScopes)
+func (s *tokenServiceImpl) Issue(ctx context.Context, tenantID uuid.UUID, applicationID uuid.UUID, userID uuid.UUID, now time.Time) (*TokenPair, error) {
+	effectiveScopes, err := s.authorization.GetScopes(ctx, userID, applicationID)
 
 	if err != nil {
 		return nil, fmt.Errorf("evaluate authorization: %w", err)
@@ -75,7 +77,7 @@ func (s *tokenServiceImpl) Issue(tenantID uuid.UUID, applicationID uuid.UUID, us
 
 }
 
-func (s *tokenServiceImpl) ValidateAccessToken(tokenID string, tenantID uuid.UUID, applicationID uuid.UUID, requiredScopes []string, now time.Time) (*Token, error) {
+func (s *tokenServiceImpl) ValidateAccessToken(ctx context.Context, tokenID string, tenantID uuid.UUID, applicationID uuid.UUID, requiredScopes []string, now time.Time) (*Token, error) {
 	token, err := s.repository.GetTokenByID(tokenID)
 	if err != nil {
 		return nil, err
@@ -111,7 +113,7 @@ func (s *tokenServiceImpl) ValidateAccessToken(tokenID string, tenantID uuid.UUI
 	return token, nil
 }
 
-func (s *tokenServiceImpl) Refresh(refreshTokenID string, now time.Time) (*TokenPair, error) {
+func (s *tokenServiceImpl) Refresh(ctx context.Context, refreshTokenID string, now time.Time) (*TokenPair, error) {
 
 	current, err := s.repository.GetTokenByID(refreshTokenID)
 
@@ -135,7 +137,7 @@ func (s *tokenServiceImpl) Refresh(refreshTokenID string, now time.Time) (*Token
 		return nil, fmt.Errorf("refresh token has no family")
 	}
 
-	effectiveScopes, err := s.authorization.Evaluate(current.TenantID, current.ApplicationID, current.UserID, current.Scopes)
+	effectiveScopes, err := s.authorization.GetScopes(ctx, current.UserID, current.ApplicationID)
 
 	if err != nil {
 		return nil, fmt.Errorf("evaluate authorization during refresh: %w", err)
@@ -163,7 +165,7 @@ func (s *tokenServiceImpl) Refresh(refreshTokenID string, now time.Time) (*Token
 	}, nil
 }
 
-func (s *tokenServiceImpl) Revoke(tokenID string) error {
+func (s *tokenServiceImpl) Revoke(ctx context.Context, tokenID string) error {
 	return s.repository.RevokeToken(tokenID)
 }
 
@@ -183,4 +185,27 @@ func containsAllScopes(granted, required []string) bool {
 		}
 	}
 	return true
+}
+
+func filterRequestedScopes(grantedScopes []string, requestedScopes []string) ([]string, error) {
+	if len(requestedScopes) == 0 {
+		return grantedScopes, nil
+	}
+
+	grantedSet := make(map[string]struct{}, len(
+		grantedScopes,
+	))
+
+	for _, scope := range grantedScopes {
+		grantedSet[scope] = struct{}{}
+	}
+
+	effective := make([]string, 0, len(requestedScopes))
+
+	for _, scope := range requestedScopes {
+		if _, ok := grantedSet[scope]; ok {
+			effective = append(effective, scope)
+		}
+	}
+	return effective, nil
 }

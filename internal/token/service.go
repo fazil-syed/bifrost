@@ -1,25 +1,23 @@
 package token
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-type AuthorizationEvaluator interface {
-	Evaluate(tenantID uuid.UUID, applicationID uuid.UUID, userID uuid.UUID, requestedScopes []string) ([]string, error)
-}
-
 type TokenService interface {
 	Issue(
+		ctx context.Context,
 		tenantID uuid.UUID,
 		applicationID uuid.UUID,
 		userID uuid.UUID,
-		requestedScopes []string,
 		now time.Time,
 	) (*TokenPair, error)
 
 	ValidateAccessToken(
+		ctx context.Context,
 		tokenID string,
 		tenantID uuid.UUID,
 		applicationID uuid.UUID,
@@ -27,11 +25,12 @@ type TokenService interface {
 		now time.Time,
 	) (*Token, error)
 	Refresh(
+		ctx context.Context,
 		refreshTokenID string,
 		now time.Time,
 	) (*TokenPair, error)
 
-	Revoke(tokenID string) error
+	Revoke(ctx context.Context, tokenID string) error
 }
 
 type TokenPair struct {
