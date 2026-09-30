@@ -61,8 +61,8 @@ func (s *service) AuthenticatePassword(ctx context.Context, email string, passwo
 
 }
 
-func (s *service) LoginWithPassword(ctx context.Context, email string, pasword string) (*Principal, *session.Session, error) {
-	principal, err := s.AuthenticatePassword(ctx, email, pasword)
+func (s *service) LoginWithPassword(ctx context.Context, email string, password string) (*Principal, *session.Session, error) {
+	principal, err := s.AuthenticatePassword(ctx, email, password)
 
 	if err != nil {
 		return nil, nil, err
