@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/fazil-syed/bifrost/internal/config"
 	"github.com/jackc/pgx/v5"
@@ -82,23 +81,15 @@ func NewPostgresPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
 	if err := configureTLS(connConfig, cfg.SSL); err != nil {
 		return nil, err
 	}
-	maxConnLifeTime, err := time.ParseDuration(cfg.Pool.MaxConnLifetime)
-	if err != nil {
-		return nil, fmt.Errorf("invalid max_conn_lifetime: %w", err)
-	}
-	maxConnIdleTime, err := time.ParseDuration(cfg.Pool.MaxConnIdleTime)
-	if err != nil {
-		return nil, fmt.Errorf("invalid max_conn_idle_time: %w", err)
-	}
-	healthCheckPeriod, err := time.ParseDuration(cfg.Pool.HealthCheckPeriod)
+
 	if err != nil {
 		return nil, fmt.Errorf("invalid health_check_period: %w", err)
 	}
 	poolConfig.MaxConns = int32(cfg.Pool.MaxConns)
 	poolConfig.MinConns = int32(cfg.Pool.MinConns)
-	poolConfig.MaxConnLifetime = maxConnLifeTime
-	poolConfig.MaxConnIdleTime = maxConnIdleTime
-	poolConfig.HealthCheckPeriod = healthCheckPeriod
+	poolConfig.MaxConnLifetime = cfg.Pool.MaxConnLifetime
+	poolConfig.MaxConnIdleTime = cfg.Pool.MaxConnIdleTime
+	poolConfig.HealthCheckPeriod = cfg.Pool.HealthCheckPeriod
 
 	connConfig.DefaultQueryExecMode = pgx.QueryExecModeCacheDescribe
 	return poolConfig, nil

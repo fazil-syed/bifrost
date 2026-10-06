@@ -38,11 +38,11 @@ type SSLConfig struct {
 }
 
 type PoolConfig struct {
-	MaxConns          int    `yaml:"max_conns"`
-	MinConns          int    `yaml:"min_conns"`
-	MaxConnLifetime   string `yaml:"max_conn_lifetime"`
-	MaxConnIdleTime   string `yaml:"max_conn_idle_time"`
-	HealthCheckPeriod string `yaml:"health_check_period"`
+	MaxConns          int           `yaml:"max_conns"`
+	MinConns          int           `yaml:"min_conns"`
+	MaxConnLifetime   time.Duration `yaml:"max_conn_lifetime"`
+	MaxConnIdleTime   time.Duration `yaml:"max_conn_idle_time"`
+	HealthCheckPeriod time.Duration `yaml:"health_check_period"`
 }
 
 type SessionConfig struct {
