@@ -9,6 +9,7 @@ type Config struct {
 	Aerospike AerospikeConfig `yaml:"aerospike"`
 	Session   SessionConfig   `yaml:"session"`
 	Token     TokenConfig     `yaml:"token"`
+	HTTP      HTTPConfig      `yaml:"http"`
 }
 
 type LoggingConfig struct {
@@ -49,6 +50,15 @@ type SessionConfig struct {
 }
 
 type TokenConfig struct {
-	AccessLifetime  string `yaml:"access_lifetime"`
-	RefreshLifetime string `yaml:"refresh_lifetime"`
+	AccessLifetime  time.Duration `yaml:"access_lifetime"`
+	RefreshLifetime time.Duration `yaml:"refresh_lifetime"`
+}
+
+type HTTPConfig struct {
+	Host            string        `yaml:"host"`
+	Port            int           `yaml:"port"`
+	ReadTimeout     time.Duration `yaml:"read_timeout"`
+	WriteTimeout    time.Duration `yaml:"write_timeout"`
+	IdleTimeout     time.Duration `yaml:"idle_timeout"`
+	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 }
