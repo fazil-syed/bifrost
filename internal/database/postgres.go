@@ -82,9 +82,6 @@ func NewPostgresPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
 		return nil, err
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("invalid health_check_period: %w", err)
-	}
 	poolConfig.MaxConns = int32(cfg.Pool.MaxConns)
 	poolConfig.MinConns = int32(cfg.Pool.MinConns)
 	poolConfig.MaxConnLifetime = cfg.Pool.MaxConnLifetime
