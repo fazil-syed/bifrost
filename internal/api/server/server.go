@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/fazil-syed/bifrost/internal/config"
+	"github.com/fazil-syed/bifrost/internal/logger"
 )
 
 type Server struct {
@@ -32,8 +33,8 @@ func NewServer(cfg config.HTTPConfig, handler http.Handler) (*Server, error) {
 	}, nil
 }
 func (s *Server) Start() error {
+	logger.Info.Println("starting bifrost server")
 	err := s.server.ListenAndServe()
-
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
