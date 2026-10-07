@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -28,4 +30,21 @@ func NewServer(cfg config.HTTPConfig, handler http.Handler) (*Server, error) {
 		},
 		shutdownTimeout: cfg.ShutdownTimeout,
 	}, nil
+}
+func (s *Server) Start() error {
+	err := s.server.ListenAndServe()
+
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+
+	return err
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	shutdownCtx, cancel := context.WithTimeout(ctx, s.shutdownTimeout)
+
+	defer cancel()
+
+	return s.server.Shutdown(shutdownCtx)
 }
