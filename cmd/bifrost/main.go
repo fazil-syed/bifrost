@@ -4,13 +4,13 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/fazil-syed/bifrost/internal/aerospike"
 	"github.com/fazil-syed/bifrost/internal/bifrost"
 	"github.com/fazil-syed/bifrost/internal/config"
-	"github.com/fazil-syed/bifrost/internal/database"
 	"github.com/fazil-syed/bifrost/internal/logger"
-	"github.com/fazil-syed/bifrost/internal/migrations"
 )
 
 func main() {
@@ -33,45 +33,22 @@ func main() {
 
 	logger.Info.Printf("Bifrost logger initialized")
 
-	ctx := context.Background()
-	db, err := database.NewPostgresPool(ctx, cfg.Database)
-	if err != nil {
-		logger.Error.Fatalf("initialize database: %v", err)
-	}
-	defer db.Close()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
-	if err := db.Ping(ctx); err != nil {
-		logger.Error.Fatalf("ping database: %v", err)
-	}
+	defer stop()
 
-	logger.Info.Println("database connection successful")
-
-	if err := migrations.RunGlobal(ctx, db); err != nil {
-		logger.Error.Fatalf("run global migrations: %v", err)
-	}
-
-	logger.Info.Println("global migrations completed")
-
-	if err := migrations.RunAllTenants(ctx, db, cfg.Database); err != nil {
-		logger.Error.Fatalf("run tenant migrations: %v", err)
-	}
-
-	logger.Info.Println("tenant migrations completed")
-
-	aerospikeClient, err := aerospike.New(ctx, cfg.Aerospike)
-	if err != nil {
-		logger.Error.Fatalf("initialize aerospike: %v", err)
-	}
-	defer aerospikeClient.Close()
-
-	logger.Info.Println("aerospike client ready")
-
-	app, err := bifrost.New(db, aerospikeClient, *cfg)
+	app, err := bifrost.New(ctx, *cfg)
 
 	if err != nil {
 		logger.Error.Fatalf("failed to initialize bifrst : %v", err)
 	}
 
-	app.Start()
+	if err := app.Start(ctx); err != nil {
+		logger.Error.Fatal(err)
+	}
+
+	if err := app.Shutdown(context.Background()); err != nil {
+		logger.Error.Fatal(err)
+	}
 
 }
